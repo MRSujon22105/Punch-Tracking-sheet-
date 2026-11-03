@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="bn" id="htmlTag" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#064e3b">
+  <title>Punch Inspection Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' };</script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Outfit', sans-serif; }
+    .glass-header { background: linear-gradient(135deg,#022c22 0%,#064e3b 50%,#047857 100%); backdrop-filter: blur(12px); }
+    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    .animate-marquee { display:inline-block; animation:marquee 45s linear infinite; }
+    .marquee-container:hover .animate-marquee { animation-play-state:paused; }
+    @media print {
+      body * { visibility:hidden; }
+      #printableArea, #printableArea * { visibility:visible; }
+      #printableArea { position:absolute; left:0; top:0; width:100%; max-width:none; }
+      .no-print { display:none !important; }
+      body { background:white !important; color:black !important; }
+      #tableContainer, table, th, td { color:black !important; background:white !important; }
+    }
+  </style>
+</head>
+<body id="appBody" class="bg-slate-100 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 pb-24 transition-colors duration-300">
+<header class="glass-header text-white shadow-2xl sticky top-0 z-40 no-print border-b border-emerald-500/20">
+  <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3.5">
+      <label class="relative w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20 overflow-hidden cursor-pointer">
+        <img id="headerLogoImg" class="w-full h-full object-cover hidden" alt="Logo">
+        <span id="headerLogoFallback" class="w-full h-full bg-gradient-to-tr from-amber-400 to-amber-200 flex items-center justify-center text-slate-950"><i data-lucide="shield-check" class="w-6 h-6"></i></span>
+        <input type="file" id="logoImageInput" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+      </label>
+      <h1 class="text-base sm:text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-200 to-amber-300 uppercase">Punch Inspection Tracker</h1>
+    </div>
+    <button onclick="toggleSidebar()" class="w-11 h-11 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center border border-white/15" aria-label="Menu"><i data-lucide="menu"></i></button>
+  </div>
+</header>
+
+<div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-40 hidden no-print"></div>
+<aside id="appSidebar" class="fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-50 shadow-2xl -translate-x-full transition-transform duration-300 flex flex-col no-print border-r border-slate-200 dark:border-slate-800">
+  <div class="p-6 bg-gradient-to-br from-emerald-900 to-emerald-950 text-white flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 bg-amber-400 text-slate-950 font-bold rounded-2xl flex items-center justify-center">PIT</div>
+      <div><h3 class="font-bold">Punch Inspection</h3><p class="text-xs text-emerald-300">Management Panel</p></div>
+    </div>
+    <button onclick="toggleSidebar()" class="p-2"><i data-lucide="x"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto py-4 px-3 text-sm">
+    <p class="text-xs font-bold text-slate-400 uppercase px-3 mb-2">General</p>
+    <a href="#" onclick="toggleSidebar();renderTable();return false" class="menu-link"><i data-lucide="layout-dashboard"></i> Dashboard / Records</a>
+    <a href="#" onclick="toggleSidebar();checkAuthAndOpenModal();return false" class="menu-link"><i data-lucide="plus-circle"></i> Add New Punch</a>
+    <p class="text-xs font-bold text-slate-400 uppercase px-3 mt-5 mb-2">Configuration</p>
+    <a href="#" onclick="toggleSidebar();checkAuthAndOpenSettings();return false" class="menu-link"><i data-lucide="settings"></i> System Settings</a>
+    <a href="#" onclick="toggleSidebar();toggleDarkMode();return false" class="menu-link"><i id="themeToggleIcon" data-lucide="sun"></i><span id="themeToggleText">Light Mode</span></a>
+    <p class="text-xs font-bold text-slate-400 uppercase px-3 mt-5 mb-2">Actions</p>
+    <a href="#" onclick="toggleSidebar();window.print();return false" class="menu-link"><i data-lucide="printer"></i> Save as PDF / Print</a>
+    <a href="#" onclick="toggleSidebar();exportCSV();return false" class="menu-link"><i data-lucide="download"></i> Export CSV</a>
+    <a href="#" onclick="toggleSidebar();shareApp();return false" class="menu-link"><i data-lucide="share-2"></i> Share App</a>
+    <p class="text-xs font-bold text-slate-400 uppercase px-3 mt-5 mb-2">Authentication</p>
+    <a href="#" onclick="toggleSidebar();handleAuthClick();return false" id="sidebarAuthBtn" class="menu-link text-red-600"><i data-lucide="log-in"></i><span>Login</span></a>
+  </div>
+  <div class="p-4 bg-slate-50 dark:bg-slate-950 border-t text-center text-xs text-slate-500">Punch Inspection Tracker © 2026</div>
+</aside>
+
+<main id="printableArea" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-700 border border-emerald-500/30 rounded-2xl p-3.5 mb-6 flex items-center shadow-lg overflow-hidden marquee-container text-white no-print">
+    <i data-lucide="bell-ring" class="w-5 h-5 text-amber-300 mr-3 shrink-0"></i>
+    <div class="overflow-hidden relative w-full"><div id="inspectionTickerContent" class="animate-marquee whitespace-nowrap text-sm font-semibold">Inspection alerts will appear here.</div></div>
+  </div>
+
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 no-print">
+    <div class="stat-card"><div class="stat-icon"><i data-lucide="disc"></i></div><div><p class="stat-label">Total Sets</p><p id="card-total" class="stat-value">0</p></div></div>
+    <div class="stat-card"><div class="stat-icon"><i data-lucide="layers"></i></div><div><p class="stat-label">Production</p><p id="card-prod" class="stat-value">0.00 M</p></div></div>
+    <div class="stat-card"><div class="stat-icon bg-red-50 dark:bg-red-950 text-red-600"><i data-lucide="alert-triangle"></i></div><div><p class="stat-label">Inspection</p><p id="card-alert" class="stat-value text-red-600">0</p></div></div>
+    <div class="stat-card"><div class="stat-icon"><i data-lucide="check-circle-2"></i></div><div><p class="stat-label">Status Good</p><p id="card-ok" class="stat-value text-emerald-600">0</p></div></div>
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl shadow-md border border-slate-200 dark:border-slate-800 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 no-print">
+    <div class="relative w-full sm:w-96"><i data-lucide="search" class="w-4 h-4 absolute left-4 top-3.5 text-slate-400"></i><input type="text" id="searchInput" oninput="renderTable()" placeholder="Search Punch ID..." class="w-full pl-11 pr-4 py-2.5 border rounded-2xl text-sm bg-slate-50 dark:bg-slate-950 dark:border-slate-700"></div>
+    <div class="flex gap-4 text-xs font-semibold text-slate-600 dark:text-slate-300"><span>🔴 Inspection Needed</span><span>🟢 Normal</span></div>
+  </div>
+
+  <div id="tableContainer" class="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div class="overflow-x-auto"><table class="w-full text-left border-collapse text-sm min-w-[1500px]">
+      <thead><tr class="bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-bold border-b dark:border-slate-800">
+        <th class="p-4 text-center sticky left-0 bg-slate-100 dark:bg-slate-950">Punch ID</th>
+        <th class="p-4 text-center">First Receiving Date</th><th class="p-4 text-center">Upper Qty</th><th class="p-4 text-center">Lower Qty</th>
+        <th class="p-4 text-center">Grand Total Produced (Million)</th><th class="p-4 text-center">Last Inspection Date</th>
+        <th class="p-4 text-center">Per Upper Produced (M)</th><th class="p-4 text-center">Per Lower Produced (M)</th>
+        <th class="p-4 text-center">Target per Upper (M)</th><th class="p-4 text-center">Target per Lower (M)</th>
+        <th class="p-4 text-center">Grand Total Target (M)</th><th class="p-4 text-center">Target Inspection Date</th>
+        <th class="p-4 text-center">Status</th><th id="actionsHeaderTh" class="p-4 text-center no-print">Actions</th>
+      </tr></thead>
+      <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300"></tbody>
+    </table></div>
+  </div>
+  <p class="text-xs text-slate-500 mt-3">Note: Production values are entered in million units. Records are stored in this browser on this device.</p>
+</main>
+
+<nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 text-slate-700 dark:text-white shadow-2xl border-t dark:border-slate-800 flex justify-around items-center py-3 z-30 no-print">
+  <button onclick="renderTable()" class="flex flex-col items-center text-emerald-600"><i data-lucide="layout-grid"></i><span class="text-xs">Home</span></button>
+  <button onclick="checkAuthAndOpenModal()" class="flex flex-col items-center text-slate-500"><i data-lucide="plus-circle"></i><span class="text-xs">Add Punch</span></button>
+  <button onclick="toggleSidebar()" class="flex flex-col items-center text-slate-500"><i data-lucide="menu"></i><span class="text-xs">More</span></button>
+</nav>
+
+<!-- Login modal -->
+<div id="loginModal" class="modal-backdrop hidden no-print"><div class="modal-box max-w-sm">
+  <div class="flex justify-between items-center mb-5"><h3 class="text-lg font-bold">🔒 System Login</h3><button onclick="closeLoginModal()">✕</button></div>
+  <form id="loginForm" onsubmit="processLogin(event)" class="space-y-4">
+    <label class="form-label">Username<input id="loginUser" type="text" required placeholder="admin" class="form-input"></label>
+    <label class="form-label">Password<input id="loginPass" type="password" required placeholder="Password" class="form-input"></label>
+    <p class="text-xs text-amber-600">Default login: admin / 12345. Change this before using real data.</p>
+    <div class="flex justify-end gap-3"><button type="button" onclick="closeLoginModal()" class="btn-secondary">Cancel</button><button type="submit" class="btn-primary">Login</button></div>
+  </form>
+</div></div>
+
+<!-- Add/Edit modal -->
+<div id="punchModal" class="modal-backdrop hidden no-print"><div class="modal-box max-w-lg max-h-[90vh] overflow-y-auto">
+  <div class="flex justify-between items-center mb-5"><h3 id="modalTitle" class="text-lg font-bold">Add New Punch Record</h3><button onclick="closeModal()">✕</button></div>
+  <form id="punchForm" onsubmit="saveRecord(event)" class="space-y-4">
+    <input type="hidden" id="editIndex" value="-1">
+    <label class="form-label">Punch ID<input id="punchId" type="text" required placeholder="e.g. P-005" class="form-input"></label>
+    <div class="grid grid-cols-2 gap-4">
+      <label class="form-label">First Receiving Date<input id="receivingDate" type="date" required class="form-input"></label>
+      <label class="form-label">Last Inspection Date<input id="inspectionDate" type="date" required class="form-input"></label>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <label class="form-label">Upper Quantity<input id="upperQty" type="number" min="1" required placeholder="30" class="form-input"></label>
+      <label class="form-label">Lower Quantity<input id="lowerQty" type="number" min="1" required placeholder="30" class="form-input"></label>
+    </div>
+    <label class="form-label">Grand Total Produced (Million)<input id="grandProd" type="number" step="any" min="0" required placeholder="e.g. 2.0" class="form-input"></label>
+    <div class="flex justify-end gap-3 pt-3"><button type="button" onclick="closeModal()" class="btn-secondary">Cancel</button><button type="submit" class="btn-primary">Save Record</button></div>
+  </form>
+</div></div>
+
+<!-- Settings modal -->
+<div id="settingsModal" class="modal-backdrop hidden no-print"><div class="modal-box max-w-sm">
+  <div class="flex justify-between items-center mb-5"><h3 class="text-lg font-bold">⚙️ System Settings</h3><button onclick="closeSettingsModal()">✕</button></div>
+  <form id="settingsForm" onsubmit="saveSettings(event)" class="space-y-4">
+    <label class="form-label">Production Alert Threshold (Million)<input id="settingThreshold" type="number" step="any" min="0" required class="form-input"></label>
+    <label class="form-label">Inspection Interval (Months)<input id="settingInterval" type="number" min="1" required class="form-input"></label>
+    <div class="flex justify-end gap-3"><button type="button" onclick="closeSettingsModal()" class="btn-secondary">Cancel</button><button type="submit" class="btn-primary">Update Settings</button></div>
+  </form>
+</div></div>
+
+<style>
+  .menu-link{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;color:#475569;font-weight:500}
+  .menu-link:hover{background:#ecfdf5;color:#047857}
+  .dark .menu-link{color:#cbd5e1}.dark .menu-link:hover{background:#022c22;color:#6ee7b7}
+  .stat-card{background:white;border:1px solid #e2e8f0;padding:16px;border-radius:24px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px #0000000a}
+  .dark .stat-card{background:#0f172a;border-color:#1e293b}
+  .stat-icon{width:44px;height:44px;flex-shrink:0;border-radius:16px;background:#ecfdf5;color:#059669;display:flex;align-items:center;justify-content:center}
+  .dark .stat-icon{background:#022c22;color:#6ee7b7}
+  .stat-label{font-size:10px;font-weight:700;letter-spacing:.08em;color:#94a3b8;text-transform:uppercase}
+  .stat-value{font-size:21px;font-weight:900;line-height:1.3}
+  .modal-backdrop{position:fixed;inset:0;background:#020617cc;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px}
+  .modal-box{background:white;color:#0f172a;border:1px solid #e2e8f0;border-radius:24px;padding:24px;width:100%;box-shadow:0 25px 60px #0005}
+  .dark .modal-box{background:#0f172a;color:#f1f5f9;border-color:#1e293b}
+  .form-label{display:block;font-size:12px;font-weight:600;color:#64748b}
+  .dark .form-label{color:#cbd5e1}
+  .form-input{display:block;width:100%;margin-top:6px;padding:12px 14px;border:1px solid #cbd5e1;border-radius:14px;background:#f8fafc;color:#0f172a;font-size:14px}
+  .dark .form-input{background:#020617;color:white;border-color:#334155}
+  .btn-primary{padding:10px 18px;border-radius:12px;background:#059669;color:white;font-size:13px;font-weight:700}
+  .btn-secondary{padding:10px 16px;border-radius:12px;border:1px solid #cbd5e1;font-size:13px;font-weight:600}
+  .dark .btn-secondary{border-color:#475569;color:#e2e8f0}
+</style>
+
+<script>
+'use strict';
+const STORAGE_DATA = 'punch_app_data_ready_v1';
+const STORAGE_SETTINGS = 'punch_app_settings_ready_v1';
+const STORAGE_LOGIN = 'punch_single_user_logged';
+const STORAGE_THEME = 'punch_dark_mode';
+let isUserLoggedIn = localStorage.getItem(STORAGE_LOGIN) === 'true';
+let appSettings = JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || 'null') || { targetThreshold: 1.5, intervalMonths: 12 };
+let isDarkMode = JSON.parse(localStorage.getItem(STORAGE_THEME) || 'true');
+let data = JSON.parse(localStorage.getItem(STORAGE_DATA) || 'null') || [
+  {id:'P-001',rDate:'2022-01-15',upperQty:30,lowerQty:20,grandProd:529.865325,iDate:'2023-01-15'},
+  {id:'P-002',rDate:'2023-05-15',upperQty:30,lowerQty:20,grandProd:529.565,iDate:'2025-09-03'},
+  {id:'P-003',rDate:'2024-02-10',upperQty:30,lowerQty:30,grandProd:5698.865565,iDate:'2024-10-10'}
+];
+function saveDataToStorage(){localStorage.setItem(STORAGE_DATA,JSON.stringify(data));}
+function saveSettingsToStorage(){localStorage.setItem(STORAGE_SETTINGS,JSON.stringify(appSettings));}
+function dateFromISO(value){if(!value)return null;const p=value.split('-').map(Number);if(p.length!==3)return null;const d=new Date(p[0],p[1]-1,p[2]);return Number.isNaN(d.getTime())?null:d;}
+function formatDate(value){const d=value instanceof Date?value:dateFromISO(value);if(!d)return '';return [String(d.getDate()).padStart(2,'0'),String(d.getMonth()+1).padStart(2,'0'),d.getFullYear()].join('-');}
+function addMonths(value,months){const d=dateFromISO(value);if(!d)return '';const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+Number(months));const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return d;}
+function dateToISO(value){if(!value)return '';if(/^\d{4}-\d{2}-\d{2}$/.test(value))return value;const m=value.match(/^(\d{2})-(\d{2})-(\d{4})$/);return m?`${m[3]}-${m[2]}-${m[1]}`:'';}
+function escapeHTML(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function needsInspection(item,targetDate){const today=new Date();today.setHours(0,0,0,0);const due=dateFromISO(targetDate);const productionReached=Number(item.grandProd||0)>=Number(appSettings.targetThreshold||0);return (!!due&&today>=due)||productionReached;}
+function renderTable(){
+  const search=(document.getElementById('searchInput')?.value||'').trim().toLowerCase();
+  const tbody=document.getElementById('tableBody');tbody.innerHTML='';
+  let totalSets=0,totalProd=0,alertCount=0,okCount=0;const alerts=[];
+  document.getElementById('actionsHeaderTh').style.display=isUserLoggedIn?'':'none';
+  data.forEach((item,index)=>{
+    if(!String(item.id).toLowerCase().includes(search))return;
+    totalSets++;const g=Number(item.grandProd)||0;totalProd+=g;
+    const upper=Number(item.upperQty)||1,lower=Number(item.lowerQty)||1;
+    const perUpper=g/upper,perLower=g/lower;
+    const targetUpper=perUpper+Number(appSettings.targetThreshold||0);
+    const targetLower=perLower+Number(appSettings.targetThreshold||0);
+    const targetGrand=g+Number(appSettings.targetThreshold||0);
+    const targetDate=addMonths(item.iDate,appSettings.intervalMonths);
+    const alert=needsInspection(item,targetDate);
+    if(alert){alertCount++;alerts.push(`⚠️ Punch ID ${item.id} requires inspection`);}else okCount++;
+    const status=alert?'<span class="px-3 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">Needs Inspection</span>':'<span class="px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700">Normal</span>';
+    const actions=isUserLoggedIn?`<td class="p-3 text-center no-print whitespace-nowrap"><button onclick="editRecord(${index})" class="text-emerald-700 font-semibold text-xs bg-emerald-100 px-3 py-2 rounded-lg mr-1">Edit</button><button onclick="deleteRecord(${index})" class="text-red-700 font-semibold text-xs bg-red-100 px-3 py-2 rounded-lg">Delete</button></td>`:'';
+    const tr=document.createElement('tr');tr.className='hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border-b dark:border-slate-800';
+    tr.innerHTML=`<td class="p-3 font-black text-emerald-700 dark:text-emerald-400 bg-slate-100 dark:bg-slate-900 text-center sticky left-0">${escapeHTML(item.id)}</td>
+      <td class="p-3 text-center">${formatDate(item.rDate)}</td><td class="p-3 text-center">${upper}</td><td class="p-3 text-center">${lower}</td>
+      <td class="p-3 text-center font-bold">${g.toFixed(6)} M</td><td class="p-3 text-center">${formatDate(item.iDate)}</td>
+      <td class="p-3 text-center">${perUpper.toFixed(2)} M</td><td class="p-3 text-center">${perLower.toFixed(2)} M</td>
+      <td class="p-3 text-center text-emerald-600">${targetUpper.toFixed(2)} M</td><td class="p-3 text-center text-emerald-600">${targetLower.toFixed(2)} M</td>
+      <td class="p-3 text-center text-emerald-600">${targetGrand.toFixed(6)} M</td><td class="p-3 text-center">${formatDate(targetDate)}</td><td class="p-3 text-center">${status}</td>${actions}`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('card-total').textContent=totalSets;
+  document.getElementById('card-prod').textContent=totalProd.toFixed(2)+' M';
+  document.getElementById('card-alert').textContent=alertCount;
+  document.getElementById('card-ok').textContent=okCount;
+  document.getElementById('inspectionTickerContent').textContent=alerts.length?alerts.join('  •  '):'✅ All punch inspection records are currently normal and up to date.';
+  if(window.lucide)lucide.createIcons();
+}
+function toggleSidebar(){const side=document.getElementById('appSidebar'),overlay=document.getElementById('sidebarOverlay');const open=!side.classList.contains('-translate-x-full');side.classList.toggle('-translate-x-full',open);overlay.classList.toggle('hidden',open);}
+function openLogin(){document.getElementById('loginForm').reset();document.getElementById('loginModal').classList.remove('hidden');}
+function closeLoginModal(){document.getElementById('loginModal').classList.add('hidden');}
+function processLogin(event){event.preventDefault();const u=document.getElementById('loginUser').value.trim(),p=document.getElementById('loginPass').value;if(u.toLowerCase()==='admin'&&p==='12345'){isUserLoggedIn=true;localStorage.setItem(STORAGE_LOGIN,'true');closeLoginModal();updateAuthUI();alert('Login successful.');}else alert('Wrong username or password. Default: admin / 12345');}
+function handleAuthClick(){if(isUserLoggedIn){if(confirm('আপনি কি Logout করতে চান?')){isUserLoggedIn=false;localStorage.setItem(STORAGE_LOGIN,'false');updateAuthUI();}}else openLogin();}
+function updateAuthUI(){const b=document.getElementById('sidebarAuthBtn');b.innerHTML=isUserLoggedIn?'<i data-lucide="log-out"></i><span>Logout</span>':'<i data-lucide="log-in"></i><span>Login</span>';renderTable();if(window.lucide)lucide.createIcons();}
+function checkAuthAndOpenModal(){if(!isUserLoggedIn){alert('নতুন রেকর্ড যোগ করতে Login করুন।');openLogin();return;}openModal();}
+function checkAuthAndOpenSettings(){if(!isUserLoggedIn){alert('Settings পরিবর্তন করতে Login করুন।');openLogin();return;}openSettingsModal();}
+function openModal(){document.getElementById('punchForm').reset();document.getElementById('editIndex').value='-1';document.getElementById('modalTitle').textContent='Add New Punch Record';document.getElementById('punchModal').classList.remove('hidden');}
+function closeModal(){document.getElementById('punchModal').classList.add('hidden');}
+function editRecord(index){if(!isUserLoggedIn)return;const item=data[index];document.getElementById('modalTitle').textContent='Edit Punch Record';document.getElementById('editIndex').value=index;document.getElementById('punchId').value=item.id;document.getElementById('receivingDate').value=dateToISO(item.rDate);document.getElementById('inspectionDate').value=dateToISO(item.iDate);document.getElementById('upperQty').value=item.upperQty;document.getElementById('lowerQty').value=item.lowerQty;document.getElementById('grandProd').value=item.grandProd;document.getElementById('punchModal').classList.remove('hidden');}
+function saveRecord(event){event.preventDefault();if(!isUserLoggedIn){alert('Login required.');return;}const index=Number(document.getElementById('editIndex').value);const item={id:document.getElementById('punchId').value.trim(),rDate:document.getElementById('receivingDate').value,iDate:document.getElementById('inspectionDate').value,upperQty:Number(document.getElementById('upperQty').value),lowerQty:Number(document.getElementById('lowerQty').value),grandProd:Number(document.getElementById('grandProd').value)};if(!item.id||!item.rDate||!item.iDate||item.upperQty<1||item.lowerQty<1||item.grandProd<0){alert('সব তথ্য সঠিকভাবে পূরণ করুন।');return;}if(data.some((x,i)=>x.id.toLowerCase()===item.id.toLowerCase()&&i!==index)){alert('এই Punch ID আগে থেকেই আছে।');return;}if(index===-1)data.push(item);else data[index]=item;saveDataToStorage();closeModal();renderTable();}
+function deleteRecord(index){if(!isUserLoggedIn)return;if(confirm(`আপনি কি ${data[index].id} রেকর্ডটি Delete করতে চান?`)){data.splice(index,1);saveDataToStorage();renderTable();}}
+function openSettingsModal(){document.getElementById('settingThreshold').value=appSettings.targetThreshold;document.getElementById('settingInterval').value=appSettings.intervalMonths;document.getElementById('settingsModal').classList.remove('hidden');}
+function closeSettingsModal(){document.getElementById('settingsModal').classList.add('hidden');}
+function saveSettings(event){event.preventDefault();if(!isUserLoggedIn)return;const threshold=Number(document.getElementById('settingThreshold').value),months=Number(document.getElementById('settingInterval').value);if(threshold<0||months<1){alert('সঠিক Settings দিন।');return;}appSettings={targetThreshold:threshold,intervalMonths:months};saveSettingsToStorage();closeSettingsModal();renderTable();}
+function toggleDarkMode(){isDarkMode=!isDarkMode;localStorage.setItem(STORAGE_THEME,JSON.stringify(isDarkMode));applyTheme();}
+function applyTheme(){document.documentElement.classList.toggle('dark',isDarkMode);const t=document.getElementById('themeToggleText'),i=document.getElementById('themeToggleIcon');if(t)t.textContent=isDarkMode?'Light Mode':'Dark Mode';if(i)i.setAttribute('data-lucide',isDarkMode?'sun':'moon');if(window.lucide)lucide.createIcons();}
+function handleLogoUpload(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{try{localStorage.setItem('punch_custom_logo',e.target.result);applyLogo(e.target.result);}catch(err){alert('ছবিটি বড় হওয়ায় সংরক্ষণ করা যায়নি। ছোট ছবি ব্যবহার করুন।');}};reader.readAsDataURL(file);}
+function applyLogo(src){const a=document.getElementById('headerLogoImg'),b=document.getElementById('headerLogoFallback');if(src){a.src=src;a.classList.remove('hidden');b.classList.add('hidden');}}
+function shareApp(){if(navigator.share){navigator.share({title:'Punch Inspection Tracker',text:'Punch Inspection Tracker App',url:location.href}).catch(()=>{});}else if(navigator.clipboard){navigator.clipboard.writeText(location.href).then(()=>alert('App link copied.'));}else alert('এই পেজের URL কপি করে Share করুন।');}
+function exportCSV(){const cols=['Punch ID','First Receiving Date','Upper Qty','Lower Qty','Grand Total Produced (Million)','Last Inspection Date'];const rows=data.map(x=>[x.id,formatDate(x.rDate),x.upperQty,x.lowerQty,x.grandProd,formatDate(x.iDate)]);const csv=[cols,...rows].map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='punch-inspection-records.csv';a.click();URL.revokeObjectURL(url);}
+window.addEventListener('DOMContentLoaded',()=>{applyTheme();updateAuthUI();const logo=localStorage.getItem('punch_custom_logo');if(logo)applyLogo(logo);if(window.lucide)lucide.createIcons();});
+</script>
+</body>
+</html>
